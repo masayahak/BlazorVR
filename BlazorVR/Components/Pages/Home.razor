@@ -1,0 +1,43 @@
+﻿@page "/"
+@inject IWeatherService WeatherService
+@inject NavigationManager NavigationManager
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>Home</PageTitle>
+
+<h1>Weather Count</h1>
+<div class="mb-3">
+    <p>
+        Weather Count = @totalCount
+    </p>
+</div>
+
+@if (isInProgress)
+{
+    <p>Working...</p>
+}
+else
+{
+    <div class="mb-3">
+        <button @onclick="CreateWeather" class="btn btn-primary">テストデータを再作成</button>
+    </div>
+}
+
+@code{
+    int totalCount { get; set; }
+    bool isInProgress { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        totalCount = await WeatherService.GetWeatherCountAsync();
+    }
+
+    async Task CreateWeather() {
+        isInProgress = true;
+        await WeatherService.InitialSetWeathers();
+        NavigationManager.NavigateTo(NavigationManager.Uri, true);
+        isInProgress = false;
+    }
+}
+
+

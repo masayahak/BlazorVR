@@ -1,0 +1,63 @@
+﻿@page "/vrfetch"
+@inject IWeatherService WeatherService
+@inject IJSRuntime JSRuntime
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<h3>Virtualize 必要ページロード</h3>
+<p>応答時間: @responseTime.TotalMilliseconds ms</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>日付</th>
+            <th>気温℃</th>
+            <th>概要</th>
+        </tr>
+    </thead>
+    <tbody>
+        <Virtualize Context="weather" ItemsProvider="LoadWeathers" OverscanCount="5" SpacerElement="tr">
+            <tr>
+                <td>@weather.No</td>
+                <td>@weather.Date.ToShortDateString()</td>
+                <td>@weather.TemperatureC</td>
+                <td>@weather.Summary</td>
+            </tr>
+        </Virtualize>
+    </tbody>
+</table>
+
+@code {
+    int totalCount;
+
+    private long serverStartTime;
+    private long clientRenderTime;
+    private TimeSpan responseTime;
+
+    private bool isResponseTimeRecorded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        serverStartTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        totalCount = await WeatherService.GetWeatherCountAsync();
+    }
+
+    private async ValueTask<ItemsProviderResult<Weather>> LoadWeathers(ItemsProviderRequest request)
+    {
+        var weathers = await WeatherService.GetRangeWeathers(request.StartIndex, request.Count);
+        return new ItemsProviderResult<Weather>(weathers, totalCount);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!isResponseTimeRecorded)
+        {
+            // クライアント側の描画完了時刻を取得
+            clientRenderTime = await JSRuntime.InvokeAsync<long>("getClientRenderTime");
+            responseTime = TimeSpan.FromMilliseconds(clientRenderTime - serverStartTime);
+            isResponseTimeRecorded = true;
+            StateHasChanged(); // 応答時間を表示するために再描画をトリガー
+        }
+    }
+}
