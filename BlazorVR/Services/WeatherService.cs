@@ -63,6 +63,7 @@ namespace BlazorVR.Services
             var weathers = await _context.Weathers
                 .Skip(startIndex)
                 .Take(Count)
+                .OrderBy(x => x.No)
                 .ToListAsync()
                 ;
 
